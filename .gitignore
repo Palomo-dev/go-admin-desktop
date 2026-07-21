@@ -3,3 +3,5 @@ dist/
 release/
 src/agent/
 config.json
+
+build-log.txt
