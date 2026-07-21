@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Go Admin Desktop</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo h1 { font-size: 20px; color: #fff; }
+    .logo p { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; margin-top: 12px; }
+    input, select { width: 100%; padding: 10px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 14px; }
+    input:focus, select:focus { outline: none; border-color: #3b82f6; }
+    button { width: 100%; margin-top: 16px; padding: 11px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #2563eb; }
+    button:disabled { background: #334155; cursor: not-allowed; }
+    button.secondary { background: transparent; border: 1px solid #334155; color: #94a3b8; }
+    .error { color: #f87171; font-size: 12px; margin-top: 8px; display: none; }
+    .hidden { display: none !important; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #334155; font-size: 13px; }
+    .status-row:last-child { border-bottom: none; }
+    .status-row .label { color: #94a3b8; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .dot.online { background: #22c55e; }
+    .dot.offline { background: #64748b; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: #94a3b8; }
+    .checkbox-row input { width: auto; }
+    .branch-option { display: flex; align-items: center; gap: 8px; padding: 8px; font-size: 13px; }
+    .branch-option input { width: auto; }
+    .printers-list { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+    .printers-list li { padding: 4px 0; list-style: none; }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <h1>Go Admin Desktop</h1>
+    <p>Agente de impresión y hardware local</p>
+  </div>
+
+  <!-- ── Pantalla: Login ── -->
+  <div id="screen-login" class="card">
+    <label>Email</label>
+    <input id="email" type="email" placeholder="tu@empresa.com" />
+    <label>Contraseña</label>
+    <input id="password" type="password" placeholder="••••••••" />
+    <p id="login-error" class="error"></p>
+    <button id="btn-login">Iniciar sesión</button>
+  </div>
+
+  <!-- ── Pantalla: Selección de organización/sucursal ── -->
+  <div id="screen-select" class="card hidden">
+    <label>Organización</label>
+    <select id="org-select"></select>
+    <label style="margin-top:16px">Sucursales a escuchar</label>
+    <div id="branch-list"></div>
+    <p id="select-error" class="error"></p>
+    <button id="btn-start">Iniciar agente</button>
+  </div>
+
+  <!-- ── Pantalla: Estado ── -->
+  <div id="screen-status" class="hidden">
+    <div class="card">
+      <div class="status-row">
+        <span class="label">Estado</span>
+        <span id="st-conn"><span class="dot offline"></span>Desconectado</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Cuenta</span>
+        <span id="st-email">—</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Organización</span>
+        <span id="st-org">—</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Sucursales</span>
+        <span id="st-branches">—</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Trabajos impresos</span>
+        <span id="st-printed">0</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Errores</span>
+        <span id="st-failed">0</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong style="font-size:13px">Impresoras del sistema</strong>
+      <ul id="printers" class="printers-list"><li>Cargando…</li></ul>
+    </div>
+
+    <div class="card">
+      <div class="checkbox-row">
+        <input type="checkbox" id="autostart" />
+        <label for="autostart" style="margin:0">Arrancar con Windows</label>
+      </div>
+      <button id="btn-logout" class="secondary">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <script>
+    const api = window.goAdminDesktop;
+    const $ = (id) => document.getElementById(id);
+    let orgs = [];
+
+    function show(screen) {
+      ['screen-login', 'screen-select', 'screen-status'].forEach((s) =>
+        $(s).classList.toggle('hidden', s !== screen)
+      );
+    }
+
+    // ── Login ──
+    $('btn-login').addEventListener('click', async () => {
+      const btn = $('btn-login');
+      btn.disabled = true;
+      btn.textContent = 'Conectando…';
+      $('login-error').style.display = 'none';
+      try {
+        orgs = await api.login($('email').value.trim(), $('password').value);
+        if (orgs.length === 1 && orgs[0].branches.length === 1) {
+          // Auto-detección: 1 org, 1 sucursal
+          const o = orgs[0];
+          await api.start(o.id, o.name, [o.branches[0].id], [o.branches[0].name]);
+          showStatus();
+        } else {
+          renderSelect();
+          show('screen-select');
+        }
+      } catch (err) {
+        $('login-error').textContent = err.message || 'Error de conexión';
+        $('login-error').style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Iniciar sesión';
+      }
+    });
+
+    // ── Selección org/sucursal ──
+    function renderSelect() {
+      $('org-select').innerHTML = orgs
+        .map((o) => `<option value="${o.id}">${o.name}</option>`)
+        .join('');
+      renderBranches();
+      $('org-select').addEventListener('change', renderBranches);
+    }
+
+    function renderBranches() {
+      const org = orgs.find((o) => o.id === Number($('org-select').value));
+      $('branch-list').innerHTML = (org?.branches || [])
+        .map(
+          (b) =>
+            `<div class="branch-option"><input type="checkbox" value="${b.id}" data-name="${b.name}" checked /> ${b.name}</div>`
+        )
+        .join('');
+    }
+
+    $('btn-start').addEventListener('click', async () => {
+      const org = orgs.find((o) => o.id === Number($('org-select').value));
+      const checked = [...$('branch-list').querySelectorAll('input:checked')];
+      if (!checked.length) {
+        $('select-error').textContent = 'Selecciona al menos una sucursal';
+        $('select-error').style.display = 'block';
+        return;
+      }
+      const btn = $('btn-start');
+      btn.disabled = true;
+      btn.textContent = 'Iniciando…';
+      try {
+        await api.start(
+          org.id,
+          org.name,
+          checked.map((c) => Number(c.value)),
+          checked.map((c) => c.dataset.name)
+        );
+        showStatus();
+      } catch (err) {
+        $('select-error').textContent = err.message;
+        $('select-error').style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Iniciar agente';
+      }
+    });
+
+    // ── Estado ──
+    async function showStatus() {
+      show('screen-status');
+      await refreshStatus();
+      loadPrinters();
+      $('autostart').checked = await api.getAutoStart();
+    }
+
+    async function refreshStatus() {
+      const s = await api.status();
+      $('st-conn').innerHTML = s.running
+        ? '<span class="dot online"></span>Conectado'
+        : '<span class="dot offline"></span>Desconectado';
+      $('st-email').textContent = s.email || '—';
+      $('st-org').textContent = s.organizationName || '—';
+      $('st-branches').textContent = s.branchNames.join(', ') || '—';
+      $('st-printed').textContent = s.jobsPrinted;
+      $('st-failed').textContent = s.jobsFailed;
+    }
+    setInterval(refreshStatus, 10_000);
+
+    async function loadPrinters() {
+      try {
+        const result = await api.listPrinters();
+        const printers = result.printers || result || [];
+        $('printers').innerHTML = printers.length
+          ? printers.map((p) => `<li>🖨 ${p.name || p}</li>`).join('')
+          : '<li>No se detectaron impresoras</li>';
+      } catch {
+        $('printers').innerHTML = '<li>No disponible (el agente no está corriendo)</li>';
+      }
+    }
+
+    $('autostart').addEventListener('change', (e) => api.setAutoStart(e.target.checked));
+
+    $('btn-logout').addEventListener('click', async () => {
+      await api.logout();
+      show('screen-login');
+    });
+
+    // Si el main process ya arrancó solo (sesión guardada), mostrar estado
+    api.onAutoStarted(() => showStatus());
+    api.status().then((s) => {
+      if (s.running) showStatus();
+    });
+  </script>
+</body>
+</html>

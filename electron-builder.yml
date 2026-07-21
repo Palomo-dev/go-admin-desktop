@@ -1,0 +1,33 @@
+appId: io.goadmin.desktop
+productName: Go Admin Desktop
+copyright: GO Admin ERP
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - src/renderer/**/*
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Go Admin Desktop
+  installerLanguages: [es_ES]
+  artifactName: GoAdminDesktop-Setup-${version}.exe
+
+# Auto-update via GitHub Releases (configurar cuando el repo esté listo)
+# publish:
+#   provider: github
+#   owner: Palomo-dev
+#   repo: go-admin-desktop
