@@ -27,6 +27,12 @@
     .dot.offline { background: #64748b; }
     .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: #94a3b8; }
     .checkbox-row input { width: auto; }
+    .password-wrapper { position: relative; }
+    .password-wrapper input { padding-right: 40px; }
+    .eye-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; font-size: 16px; padding: 4px; margin: 0; width: auto; }
+    .eye-btn:hover { color: #94a3b8; }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: #94a3b8; }
+    .remember-row input { width: auto; }
     .branch-option { display: flex; align-items: center; gap: 8px; padding: 8px; font-size: 13px; }
     .branch-option input { width: auto; }
     .printers-list { font-size: 12px; color: #94a3b8; margin-top: 8px; }
@@ -44,7 +50,14 @@
     <label>Email</label>
     <input id="email" type="email" placeholder="tu@empresa.com" />
     <label>Contraseña</label>
-    <input id="password" type="password" placeholder="••••••••" />
+    <div class="password-wrapper">
+      <input id="password" type="password" placeholder="••••••••" />
+      <button type="button" class="eye-btn" id="eye-toggle" tabindex="-1">👁</button>
+    </div>
+    <div class="remember-row">
+      <input type="checkbox" id="remember" />
+      <label for="remember" style="margin:0">Recordarme</label>
+    </div>
     <p id="login-error" class="error"></p>
     <button id="btn-login">Iniciar sesión</button>
   </div>
@@ -113,6 +126,23 @@
       );
     }
 
+    // ── Ojito toggle ──
+    $('eye-toggle').addEventListener('click', () => {
+      const pwd = $('password');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+      $('eye-toggle').textContent = pwd.type === 'password' ? '👁' : '🙈';
+    });
+
+    // ── Cargar email guardado si existe ──
+    const savedEmail = await api.getRememberedEmail();
+    if (savedEmail) {
+      $('email').value = savedEmail;
+      $('remember').checked = true;
+      $('password').focus();
+    } else {
+      $('email').focus();
+    }
+
     // ── Login ──
     $('btn-login').addEventListener('click', async () => {
       const btn = $('btn-login');
@@ -120,7 +150,10 @@
       btn.textContent = 'Conectando…';
       $('login-error').style.display = 'none';
       try {
-        orgs = await api.login($('email').value.trim(), $('password').value);
+        const email = $('email').value.trim();
+        const password = $('password').value;
+        const remember = $('remember').checked;
+        orgs = await api.login(email, password, remember);
         if (orgs.length === 1 && orgs[0].branches.length === 1) {
           // Auto-detección: 1 org, 1 sucursal
           const o = orgs[0];

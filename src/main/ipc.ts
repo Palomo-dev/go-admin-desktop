@@ -2,7 +2,7 @@ import { ipcMain } from 'electron';
 import http from 'http';
 import { login, startAgent, stopAgent, getStatus } from './agentRunner';
 import { setAutoStart, isAutoStartEnabled } from './autostart';
-import { saveConfig, clearConfig } from './store';
+import { saveConfig, clearConfig, loadConfig } from './store';
 import { DISCOVERY_PORT } from './constants';
 
 /**
@@ -11,8 +11,26 @@ import { DISCOVERY_PORT } from './constants';
  */
 export function registerIpcHandlers(): void {
   // ── Sesión ──
-  ipcMain.handle('session:login', async (_e, email: string, password: string) => {
+  ipcMain.handle('session:login', async (_e, email: string, password: string, remember: boolean) => {
+    if (remember) {
+      saveConfig({ rememberedEmail: email });
+    } else {
+      const cfg = loadConfig();
+      delete cfg.rememberedEmail;
+      saveConfig(cfg);
+    }
     return await login(email, password);
+  });
+
+  ipcMain.handle('session:getRememberedEmail', () => {
+    return loadConfig().rememberedEmail || null;
+  });
+
+  ipcMain.handle('session:clearRememberedEmail', () => {
+    const cfg = loadConfig();
+    delete cfg.rememberedEmail;
+    saveConfig(cfg);
+    return true;
   });
 
   ipcMain.handle(

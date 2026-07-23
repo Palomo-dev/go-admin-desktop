@@ -24,12 +24,10 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Go Admin Desktop
   installerLanguages: [es_ES]
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeader: build/header.bmp
+  installerSidebar: build/sidebar.bmp
   # Sin versión en el nombre: la URL releases/latest/download/GoAdminDesktop-Setup.exe
   # siempre apunta a la última versión publicada (no hay que actualizar DOWNLOAD_URL en la web)
   artifactName: GoAdminDesktop-Setup.exe
-
-# Auto-update via GitHub Releases (configurar cuando el repo esté listo)
-# publish:
-#   provider: github
-#   owner: Palomo-dev
-#   repo: go-admin-desktop

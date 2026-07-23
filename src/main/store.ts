@@ -9,6 +9,7 @@ import path from 'path';
 export interface DesktopConfig {
   email?: string;
   password?: string;
+  rememberedEmail?: string;
   agentName?: string;
   organizationId?: number;
   organizationName?: string;

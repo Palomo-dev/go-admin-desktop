@@ -9,11 +9,13 @@ import { contextBridge, ipcRenderer } from 'electron';
  */
 contextBridge.exposeInMainWorld('goAdminDesktop', {
   // Sesión
-  login: (email: string, password: string) => ipcRenderer.invoke('session:login', email, password),
+  login: (email: string, password: string, remember: boolean) => ipcRenderer.invoke('session:login', email, password, remember),
+  getRememberedEmail: () => ipcRenderer.invoke('session:getRememberedEmail'),
   start: (orgId: number, orgName: string, branchIds: number[], branchNames: string[]) =>
     ipcRenderer.invoke('session:start', orgId, orgName, branchIds, branchNames),
   status: () => ipcRenderer.invoke('session:status'),
   logout: () => ipcRenderer.invoke('session:logout'),
+  clearRememberedEmail: () => ipcRenderer.invoke('session:clearRememberedEmail'),
   setAgentName: (name: string) => ipcRenderer.invoke('session:setAgentName', name),
 
   // Auto-arranque con Windows
