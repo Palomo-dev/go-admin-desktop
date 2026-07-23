@@ -134,14 +134,20 @@
     });
 
     // ── Cargar email guardado si existe ──
-    const savedEmail = await api.getRememberedEmail();
-    if (savedEmail) {
-      $('email').value = savedEmail;
-      $('remember').checked = true;
-      $('password').focus();
-    } else {
-      $('email').focus();
-    }
+    (async () => {
+      try {
+        const savedEmail = await api.getRememberedEmail();
+        if (savedEmail) {
+          $('email').value = savedEmail;
+          $('remember').checked = true;
+          $('password').focus();
+        } else {
+          $('email').focus();
+        }
+      } catch {
+        $('email').focus();
+      }
+    })();
 
     // ── Login ──
     $('btn-login').addEventListener('click', async () => {
