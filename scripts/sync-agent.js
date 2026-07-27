@@ -57,11 +57,21 @@ const BANNER = [
 ].join('\n');
 
 let stamped = 0;
-for (const entry of fs.readdirSync(DEST, { withFileTypes: true })) {
-  if (!entry.isFile() || !entry.name.endsWith('.ts')) continue;
-  const file = path.join(DEST, entry.name);
-  fs.writeFileSync(file, BANNER + fs.readFileSync(file, 'utf8'));
-  stamped++;
+
+// Recursivo: el agente tiene subcarpetas (printing/), y sus archivos son tan
+// generados como los de la raiz.
+function stampDir(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      stampDir(full);
+    } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+      fs.writeFileSync(full, BANNER + fs.readFileSync(full, 'utf8'));
+      stamped++;
+    }
+  }
 }
+
+stampDir(DEST);
 
 console.log(`[sync-agent] Código del agente copiado desde print-agent/src → src/agent (${stamped} archivos marcados como generados)`);
