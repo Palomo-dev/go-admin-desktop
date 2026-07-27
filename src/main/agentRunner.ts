@@ -1,3 +1,4 @@
+import { app } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import os from 'os';
@@ -8,7 +9,13 @@ import {
   HEARTBEAT_INTERVAL_MS,
   DISCOVERY_PORT,
 } from './constants';
-import { loadConfig, saveConfig } from './store';
+import {
+  loadConfig,
+  saveConfig,
+  saveRefreshToken,
+  loadRefreshToken,
+  clearRefreshToken,
+} from './store';
 
 /**
  * Orquestador del agente de impresión dentro de Electron.
@@ -63,7 +70,10 @@ function primeAgentEnv(): void {
   process.env.SUPABASE_URL = SUPABASE_URL;
   process.env.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
   process.env.AGENT_EMAIL = cfg.email || 'desktop@local';
-  process.env.AGENT_PASSWORD = cfg.password || 'desktop';
+  // config.ts del agente exige AGENT_PASSWORD, pero dentro de Electron la
+  // autenticación la maneja este módulo (getClient), no signInAgent().
+  // Se usa un valor de relleno: la contraseña real nunca se almacena.
+  process.env.AGENT_PASSWORD = 'unused-in-desktop';
   process.env.AGENT_NAME = cfg.agentName || `Desktop - ${os.hostname()}`;
   process.env.DISCOVERY_PORT = String(DISCOVERY_PORT);
 }
@@ -78,7 +88,35 @@ export async function login(email: string, password: string): Promise<OrgOption[
     throw new Error(error?.message || 'Credenciales inválidas');
   }
 
-  saveConfig({ email, password });
+  // Solo se persiste el email y el refresh token cifrado. Nunca la contraseña.
+  saveConfig({ email });
+  if (data.session?.refresh_token) {
+    saveRefreshToken(data.session.refresh_token);
+  }
+  loggedIn = true;
+
+  return await getOrgsAndBranches(data.user.id);
+}
+
+/**
+ * Restaura la sesión a partir del refresh token cifrado, sin necesidad de
+ * la contraseña. Devuelve las organizaciones del usuario o null si no se pudo.
+ */
+async function restoreSession(): Promise<OrgOption[] | null> {
+  const refreshToken = loadRefreshToken();
+  if (!refreshToken) return null;
+
+  const client = getClient();
+  const { data, error } = await client.auth.refreshSession({ refresh_token: refreshToken });
+
+  if (error || !data.user || !data.session) {
+    console.warn('[agent] Refresh token inválido o expirado:', error?.message);
+    clearRefreshToken();
+    return null;
+  }
+
+  // Supabase rota el refresh token en cada uso: hay que guardar el nuevo.
+  saveRefreshToken(data.session.refresh_token);
   loggedIn = true;
 
   return await getOrgsAndBranches(data.user.id);
@@ -146,6 +184,8 @@ export async function startAgent(
           agent_name: agentName,
           status: 'online',
           last_seen_at: new Date().toISOString(),
+          app_version: app.getVersion(),
+          platform: 'desktop',
         },
         { onConflict: 'organization_id,branch_id,agent_name' }
       );
@@ -257,14 +297,15 @@ export async function markOffline(): Promise<void> {
 }
 
 /**
- * Auto-login + auto-start al abrir la app si ya hay configuración guardada.
+ * Restaura la sesión (refresh token cifrado) y arranca el agente al abrir la app,
+ * si ya hay configuración guardada. No requiere la contraseña del usuario.
  */
 export async function tryAutoStart(): Promise<boolean> {
   const cfg = loadConfig();
-  if (!cfg.email || !cfg.password) return false;
 
   try {
-    const orgs = await login(cfg.email, cfg.password);
+    const orgs = await restoreSession();
+    if (!orgs) return false;
 
     // Selección previa guardada y aún válida
     if (cfg.organizationId && cfg.branchIds?.length) {

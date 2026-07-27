@@ -1,9 +1,10 @@
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 import http from 'http';
 import { login, startAgent, stopAgent, getStatus } from './agentRunner';
 import { setAutoStart, isAutoStartEnabled } from './autostart';
 import { saveConfig, clearConfig, loadConfig } from './store';
 import { DISCOVERY_PORT } from './constants';
+import { getUpdateState, checkForUpdates, installUpdate } from './updater';
 
 /**
  * Registra todos los handlers IPC que la UI (renderer) puede invocar
@@ -64,6 +65,15 @@ export function registerIpcHandlers(): void {
   // ── Impresoras (via discovery server local del agente) ──
   ipcMain.handle('printing:list', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/printers`));
   ipcMain.handle('printing:discover', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/discover`));
+
+  // ── Actualizaciones ──
+  ipcMain.handle('app:version', () => app.getVersion());
+  ipcMain.handle('update:state', () => getUpdateState());
+  ipcMain.handle('update:check', () => checkForUpdates());
+  ipcMain.handle('update:install', () => {
+    installUpdate();
+    return true;
+  });
 }
 
 function fetchLocalJson(url: string): Promise<unknown> {

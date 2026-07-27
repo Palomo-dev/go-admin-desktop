@@ -2,6 +2,12 @@ appId: io.goadmin.desktop
 productName: Go Admin Desktop
 copyright: GO Admin ERP
 
+# Canal de distribución y auto-update (electron-updater lee latest.yml de aquí)
+publish:
+  - provider: github
+    owner: Palomo-dev
+    repo: go-admin-desktop
+
 directories:
   output: release
   buildResources: build

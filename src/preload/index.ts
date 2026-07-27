@@ -26,6 +26,14 @@ contextBridge.exposeInMainWorld('goAdminDesktop', {
   listPrinters: () => ipcRenderer.invoke('printing:list'),
   discoverNetwork: () => ipcRenderer.invoke('printing:discover'),
 
+  // Versión y actualizaciones
+  version: () => ipcRenderer.invoke('app:version'),
+  updateState: () => ipcRenderer.invoke('update:state'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+
   // Eventos desde el main process
   onAutoStarted: (callback: () => void) => ipcRenderer.on('agent:autostarted', callback),
+  onUpdateState: (callback: (state: unknown) => void) =>
+    ipcRenderer.on('update:state', (_e, state) => callback(state)),
 });

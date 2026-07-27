@@ -1,0 +1,54 @@
+name: Release
+
+# Publica el instalador en GitHub Releases al empujar un tag de versión.
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# electron-builder sube GoAdminDesktop-Setup.exe junto con latest.yml,
+# que es el archivo que electron-updater consulta para auto-actualizar.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout desktop
+        uses: actions/checkout@v4
+
+      # src/agent/ está en .gitignore: el código del agente vive en el repo del
+      # ERP (print-agent/src) y se copia con sync-agent. Sin este checkout,
+      # scripts/sync-agent.js aborta con exit 1.
+      - name: Checkout print-agent (repo del ERP)
+        uses: actions/checkout@v4
+        with:
+          repository: Palomo-dev/go-admin-erp
+          path: erp-src
+          token: ${{ secrets.ERP_REPO_TOKEN }}
+          sparse-checkout: print-agent/src
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar (sync-agent + tsc)
+        run: npm run build
+        env:
+          PRINT_AGENT_SRC: ${{ github.workspace }}\erp-src\print-agent\src
+
+      - name: Empaquetar y publicar
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -11,3 +11,6 @@ export const WEB_APP_URL = 'https://app.goadmin.io';
 export const POLL_INTERVAL_MS = 5000;
 export const HEARTBEAT_INTERVAL_MS = 20000;
 export const DISCOVERY_PORT = 3456;
+
+/** Cada cuánto se consulta GitHub Releases por una versión nueva (6 horas). */
+export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;

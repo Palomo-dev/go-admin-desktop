@@ -5,6 +5,8 @@ import { registerIpcHandlers } from './ipc';
 import { createTray } from './tray';
 import { wasOpenedHidden } from './autostart';
 import { tryAutoStart, markOffline, stopAgent } from './agentRunner';
+import { purgeLegacyPassword } from './store';
+import { initUpdater, stopUpdater } from './updater';
 
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
@@ -50,9 +52,15 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    // Migración de seguridad: elimina la contraseña en claro que guardaban
+    // las versiones <= 0.1.6. Debe correr antes de restaurar la sesión.
+    purgeLegacyPassword();
+
     registerIpcHandlers();
     mainWindow = createMainWindow();
     createTray(mainWindow);
+
+    initUpdater(mainWindow);
 
     // Si hay sesión guardada, arranca el agente automáticamente
     const started = await tryAutoStart();
@@ -65,6 +73,7 @@ if (!gotLock) {
     if (!quitting) {
       e.preventDefault();
       quitting = true;
+      stopUpdater();
       await markOffline();
       stopAgent();
       app.quit();
