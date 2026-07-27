@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('goAdminDesktop', {
   // Impresoras
   listPrinters: () => ipcRenderer.invoke('printing:list'),
   discoverNetwork: () => ipcRenderer.invoke('printing:discover'),
+  listUsbDevices: () => ipcRenderer.invoke('printing:usb'),
 
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),

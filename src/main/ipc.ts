@@ -65,6 +65,7 @@ export function registerIpcHandlers(): void {
   // ── Impresoras (via discovery server local del agente) ──
   ipcMain.handle('printing:list', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/printers`));
   ipcMain.handle('printing:discover', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/discover`));
+  ipcMain.handle('printing:usb', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/usb`));
 
   // ── Actualizaciones ──
   ipcMain.handle('app:version', () => app.getVersion());
