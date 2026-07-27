@@ -35,4 +35,33 @@ if (fs.existsSync(agentIndex)) {
   fs.rmSync(agentIndex);
 }
 
-console.log('[sync-agent] Código del agente copiado desde print-agent/src → src/agent');
+/**
+ * Marca cada archivo copiado como generado.
+ *
+ * Motivo: este directorio se borra y se regenera en cada build. Editarlo
+ * directamente hace que los cambios se pierdan de forma silenciosa en el
+ * siguiente `npm run build`, sin ningún error visible. Ya ocurrio una vez con
+ * htmlFormatter.ts y printerDrivers.ts.
+ */
+const BANNER = [
+  '// ============================================================',
+  '// ARCHIVO GENERADO AUTOMATICAMENTE - NO EDITAR',
+  '//',
+  '// Copiado por scripts/sync-agent.js desde:',
+  `//   ${SOURCE}`,
+  '//',
+  '// Cualquier cambio hecho aqui SE PERDERA en el siguiente build.',
+  '// Edita el archivo original en el repo del ERP (print-agent/src).',
+  '// ============================================================',
+  '',
+].join('\n');
+
+let stamped = 0;
+for (const entry of fs.readdirSync(DEST, { withFileTypes: true })) {
+  if (!entry.isFile() || !entry.name.endsWith('.ts')) continue;
+  const file = path.join(DEST, entry.name);
+  fs.writeFileSync(file, BANNER + fs.readFileSync(file, 'utf8'));
+  stamped++;
+}
+
+console.log(`[sync-agent] Código del agente copiado desde print-agent/src → src/agent (${stamped} archivos marcados como generados)`);
