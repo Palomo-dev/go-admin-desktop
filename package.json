@@ -1,6 +1,6 @@
 {
   "name": "go-admin-desktop",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "description": "Go Admin Desktop — App de escritorio de GO Admin ERP. Conecta impresoras físicas (POS/PMS) con la nube y sirve de base para los módulos de escritorio.",
   "main": "dist/main/index.js",
